@@ -1,0 +1,1 @@
+This code snippet takes in an array of positive integers and gives the length of the longest divisible subsequence. This is defined by some element in the array being divisble by the previous element. For example, given the array {1,2,3,8,16,32,64}, this program will output that the length of the longest divisible subsequence is 4 because of the subsequence {8,16,32,64}.
