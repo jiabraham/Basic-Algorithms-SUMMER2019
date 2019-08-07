@@ -10,6 +10,7 @@
 
 using namespace std;
 int debug = 0;
+int debug_path = 0;
 
 struct Edge;
 
@@ -30,10 +31,11 @@ struct Edge {
 };
 
 const int RESERVE_NODES = 100000;
-const int MIN_FREE_NODES = 10;
+const int MIN_FREE_NODES = 100;
 
 std::vector<Node> all_nodes;
-std::vector<Edge> water_edges;
+std::vector<Edge> out_water_edges;
+std::vector<Edge> in_water_edges;
 int cur_unused_position = 0;
 
 std::map<int, Node *> node_index;
@@ -99,124 +101,230 @@ void add_edge(int start_node, int end_node, bool water_path) {
 
   //If this is an edge with water, add it to global vector water_edges
   if (water_path) {
-    water_edges.push_back(node_start_edge);
+    out_water_edges.push_back(node_start_edge);
+    in_water_edges.push_back(node_end_edge);
   }
 }
 
-int traverse_to_beginning(Edge& in_edge, int cur_path_length, int *min_path_length) {
+int traverse_to_beginning(Edge& in_edge, int cur_path_length, int *min_path_length, bool *reached_final, bool debug_path) {
+
   Node *node = in_edge.dest;
-  //cout << "B Examining: " << in_edge.dest->node_index << " " << cur_path_length << " " << *min_path_length << endl;
+
+
+  if (debug_path) {
+    cout << "%%";
+    cout << "B Examining: " << in_edge.dest->node_index << " " << cur_path_length << " " << *min_path_length << endl;
+  }
+
+  // Already visited!
+
   if (node->visited_backward) {
-    //cout << "Visited backward " << node->node_index << endl;
+
+    if (debug_path) {
+      cout << "%%";
+      cout << "DS: " << node->node_index << " " << node->distance_from_source << endl;
+    }
+
     if (node->distance_from_source < INT_MAX) {
+
+      // We reached node, that can reach the last node!
+      *reached_final = true;
       cur_path_length += node->distance_from_source;
+      
       if (cur_path_length < *min_path_length) {
-        cout << "B Set min path length: " << cur_path_length << endl;
+
+    if (debug_path) {
+      cout << "%%";    
+      cout << "B Set min path length: " << cur_path_length << endl;
+    }
+    
         *min_path_length = cur_path_length;
         return *min_path_length;
       }
-      return node->distance_from_source;
+      return cur_path_length;
     }
     return INT_MAX;
   }
+
+  // Reached Beginning state!
+  
   if (node->node_index == 1) {
-    //cout << "Got to beginning: " << node->node_index << endl;
+    *reached_final = true;
+
+    if (debug_path) {
+      cout << "%%";
+      cout << "Got to beginning: " << node->node_index << endl;
+    }
+    
     node->visited_backward = true;
     node->distance_from_source = 0;
     if (cur_path_length < *min_path_length) {
-      //cout << "Set min path length: " << cur_path_length << endl;
+      if (debug_path) {
+    cout << "%%";
+    cout << "Set min path length: " << cur_path_length << endl;
+      }
       *min_path_length = cur_path_length;
       return *min_path_length;
-    }
+     }
     return cur_path_length;
   }
 
+  if (node->in_edges.empty()) {
+    /* Mark the path as being visited, but no path to beginning */
+    node->distance_from_source = INT_MAX;
+    node->visited_backward = true;
+    return INT_MAX;
+  }
+
+  // Explore
+  
   int min_ret = INT_MAX;
+  node->distance_from_source = INT_MAX;
+  
   for (int i = 0; i < node->in_edges.size(); i++) {
     int ret = 0;
-    if (node->in_edges[i].water) {
-      ret = traverse_to_beginning(node->in_edges[i], cur_path_length, min_path_length);
-    } else {
-      ret = traverse_to_beginning(node->in_edges[i], cur_path_length+1, min_path_length);
+    if (debug_path) {
+      cout << "%%Looking at: " << node->in_edges[i].dest->node_index << endl;
     }
-    //cout << "Returned " << ret << " " << node->node_index << endl;
-    node->in_edges[i].dest->visited_backward = true;
-    node->in_edges[i].dest->distance_from_source = INT_MAX;
+    if (node->in_edges[i].water) {
+      ret = traverse_to_beginning(node->in_edges[i], cur_path_length, min_path_length, reached_final, debug_path);
+    } else {
+      ret = traverse_to_beginning(node->in_edges[i], cur_path_length+1, min_path_length, reached_final, debug_path);
+    }
+
+    if (debug_path) {
+      cout << "%%";
+      cout << "B Returned " << node->node_index << " " << ret << endl;
+    }
+
     if (ret >= 0) {
-      node->in_edges[i].dest->distance_from_source = ret - cur_path_length;
-      //cout << "Set distance from source " << ret - cur_path_length << endl;
+      if (debug_path) {
+    cout << "%%";
+    cout << "Set distance from source " << node->node_index << " " << ret - cur_path_length << endl;
+      }
+
       if (ret < min_ret) {
         min_ret = ret;
       }
     }
   }
+  if (min_ret < INT_MAX) {
+    node->distance_from_source = min_ret - cur_path_length;
+  }
+
+  node->visited_backward = true;
   return min_ret;
 }
 
 int traverse_to_end(Edge& in_edge, int end_node_index, int cur_path_length, int *min_path_length, bool *reached_final, bool debug_path) {
+
   Node *node = in_edge.dest;
-  if (debug_path) cout << "++";
-  cout << "F Examining: " << in_edge.dest->node_index << " " << end_node_index << " " << cur_path_length << " " << *min_path_length << endl;
+
+  if (debug_path) {
+    cout << "++";
+    cout << "F Examining: " << in_edge.dest->node_index << " " << end_node_index << " " << cur_path_length << " " << *min_path_length << endl;
+  }
+
+  // Already visited!
+  
   if (node->visited_forward) {
-    if (debug_path) cout << "++";
-    cout << "DE: " << node->distance_from_end;
+
+    if (debug_path) {
+      cout << "++";
+      cout << "DE: " << node->node_index << " " << node->distance_from_end << endl;
+    }
+
     if (node->distance_from_end < INT_MAX) {
 
+       // We reached node, that can reach the last node!
+      *reached_final = true;
+      
       cur_path_length += node->distance_from_end;
       if (cur_path_length < *min_path_length) {
-        cout << "F Set min path length: " << cur_path_length << endl;
+
+    if (debug_path) {
+      cout << "++";    
+      cout << "F Set min path length: " << node->node_index << " " << cur_path_length << endl;
+    }
+
         *min_path_length = cur_path_length;
         return *min_path_length;
       }
-      return node->distance_from_end;
+      return cur_path_length;
     }
     return INT_MAX;
   }
+
+  // Reached end!
+  
   if (node->node_index == end_node_index) {
     *reached_final = true;
-    cout << "**Got to end: " << node->node_index << endl;
+
+    if (debug_path) {
+      cout << "++";
+      cout << "Got to end: " << node->node_index << endl;
+    }
+
     node->visited_forward = true;
     node->distance_from_end = 0;
     if (cur_path_length < *min_path_length) {
-      cout << "Set min path length: " << cur_path_length << endl;
+      if (debug_path) {
+    cout << "++";
+    cout << "Set min path length: " << cur_path_length << endl;
+      }
       *min_path_length = cur_path_length;
       return *min_path_length;
     }
     return cur_path_length;
   }
+
+  // Reached end because no children.
+  
   if (node->out_edges.empty()) {
     /* Mark the path as being visited, but no path to end */
-    node->distance_from_end = -1;
+    node->distance_from_end = INT_MAX;
     node->visited_forward = true;
-    return -1;
+    return INT_MAX;
   }
+
+  // Explore!
+  
   int min_ret = INT_MAX;
+  node->distance_from_end = INT_MAX;
+  
   for (int i = 0; i < node->out_edges.size(); i++) {
     int ret = 0;
-    if (debug_path) cout << "++Looking at: " << node->out_edges[i].dest->node_index;
+    if (debug_path) {
+      cout << "++Looking at: " << node->out_edges[i].dest->node_index << endl;
+    }
     if (node->out_edges[i].water) {
       ret = traverse_to_end(node->out_edges[i], end_node_index, cur_path_length, min_path_length, reached_final, debug_path);
     } else {
       ret = traverse_to_end(node->out_edges[i], end_node_index, cur_path_length+1, min_path_length, reached_final, debug_path);
     }
-    if (*reached_final) {
-      cout << "**Returned " << ret << " " << node->node_index << endl;
-    } else {
-      cout << "Returned " << ret << " " << node->node_index << endl;
+
+    if (debug_path) {
+      cout << "++";
+      cout << "F Returned " << ret << " " << node->node_index << endl;
     }
-    node->out_edges[i].dest->visited_forward = true;
-    node->out_edges[i].dest->distance_from_end = INT_MAX;
+
     if (ret >= 0) {
-      node->out_edges[i].dest->distance_from_end = ret - cur_path_length;
-      if (debug_path) cout << "++";
-      cout << "F Set distance from end " << ret - cur_path_length << endl;
+      if (debug_path) {
+    cout << "++";
+    cout << "Set distance from end " << node->node_index << " " << ret - cur_path_length << endl;
+      }
       if (ret < min_ret) {
         min_ret = ret;
       }
     }
   }
+  if (min_ret < INT_MAX) {
+    node->distance_from_end = min_ret - cur_path_length;
+  }
+  node->visited_forward = true;
   return min_ret;
 }
+
 
 int main() {
   /* Enter your code here. Read input from STDIN. Print output to STDOUT */
@@ -251,33 +359,51 @@ int main() {
   //Print minumum path distance minus paths with reservoir
   int min_path_length = INT_MAX;
   for (int i = 0; i < water_count; i++) {
+    if (debug_path) {
+      cout << "Water Edge ----->  " << i << endl;
+    }
+    
     int cur_path_length_to_beginning = INT_MAX;
-    traverse_to_beginning(water_edges[i], 0, &cur_path_length_to_beginning);
+    bool reached_beginning = false;
+    bool debug_backward_path = false;
+
+    // if (in_water_edges[i].dest->node_index==5) debug_backward_path = true;
+
+    traverse_to_beginning(in_water_edges[i], 0, &cur_path_length_to_beginning, &reached_beginning, debug_backward_path);
+    
     int cur_path_length_to_end = INT_MAX;
-    bool debug_path = false;
-    if (water_edges[i].dest->node_index==45) debug_path = true;
     bool reached_end = false;
-    traverse_to_end(water_edges[i], num_of_rooms, 0, &cur_path_length_to_end, &reached_end, debug_path);
-    if (reached_end) cout << "**";
-    cout << "Q: " << water_edges[i].dest->node_index << " " << cur_path_length_to_beginning << " " << cur_path_length_to_end << endl;
+    bool debug_path = false;
+
+    // if (out_water_edges[i].dest->node_index==45) debug_path = true;
+
+    traverse_to_end(out_water_edges[i], num_of_rooms, 0, &cur_path_length_to_end, &reached_end, debug_path);
+
+    if (debug_path) {
+      if (reached_end) cout << "**";
+      cout << "Q: " << in_water_edges[i].source->node_index << " " << cur_path_length_to_beginning << endl;
+      cout << "Q: " << out_water_edges[i].dest->node_index << " " << cur_path_length_to_end << endl;
+    }
+    
     if (cur_path_length_to_beginning < INT_MAX && cur_path_length_to_end < INT_MAX) {
         int cur_path_length = cur_path_length_to_beginning + cur_path_length_to_end;
         if (cur_path_length < min_path_length && cur_path_length >= 0) {
           min_path_length = cur_path_length;
-          cout << "P: " << water_edges[i].dest->node_index << " " << min_path_length;
+          if (debug_path) {
+        cout << "P: " << in_water_edges[i].dest->node_index << " " << out_water_edges[i].dest->node_index << " " << min_path_length;
+      }
         }
     }
+    if (debug_path) {
+      cout << "================ FINISHED: Water Edge ----->  " << i << endl;
+    }
+    
   }
   if (min_path_length == INT_MAX) {
     min_path_length = -1;
   }
+
   cout << min_path_length << endl;
-  //bool ret = backward_dijkstra(num_of_rooms, all_nodes[num_of_rooms-1], forward, min_path, water_count)
-  //if (ret) {
-  //  cout << min_path << endl;
-  //}
-  //else {
-  //  cout << -1 << endl;
-  //}
+
   return 0;
 }
