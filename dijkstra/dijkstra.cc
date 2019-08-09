@@ -49,24 +49,6 @@ Node *get_free_node() {
   return ret;
 }
 
-//Don't know if we'll need this
-void reset_visited() {
-  for (int i = 0; i < cur_unused_position; i++) {
-    //all_nodes[i].visited = 0;
-  }
-}
-
-//Don't know if we'll need this either
-vector<Node *> get_indegree_zero_nodes() {
-  vector<Node *> out;
-  for (int i = 0; i < cur_unused_position; i++) {
-    //if (all_nodes[i].previous.size() == 0) {
-    //  out.push_back(&all_nodes[i]);
-    //}
-  }
-  return out;
-}
-
 //In addition to creating the edge, set if this is a water path
 void add_edge(int start_node, int end_node, bool water_path) {
   if (debug) {
