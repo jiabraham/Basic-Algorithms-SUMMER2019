@@ -49,7 +49,7 @@ Node *get_free_node() {
   return ret;
 }
 
-//In addition to creating the edge, set if this is a water path
+// In Addition to creating the edge, Set if this is a water path.
 void add_edge(int start_node, int end_node, bool water_path) {
   if (debug) {
     //cout << start_node << " " << end_node << endl;
@@ -81,7 +81,7 @@ void add_edge(int start_node, int end_node, bool water_path) {
   node_end_edge.dest = nodestart;
   node_end_edge.water = water_path;
 
-  //If this is an edge with water, add it to global vector water_edges
+  //If This is an edge with water, add it to Global vector water_edges
   if (water_path) {
     out_water_edges.push_back(node_start_edge);
     in_water_edges.push_back(node_end_edge);
@@ -109,7 +109,7 @@ int traverse_to_beginning(Edge& in_edge, int cur_path_length, int *min_path_leng
 
     if (node->distance_from_source < INT_MAX) {
 
-      // We reached node, that can reach the last node!
+      // We Reached node, that can reach the last node!!!
       *reached_final = true;
       cur_path_length += node->distance_from_source;
       
@@ -207,7 +207,7 @@ int traverse_to_end(Edge& in_edge, int end_node_index, int cur_path_length, int 
     cout << "F Examining: " << in_edge.dest->node_index << " " << end_node_index << " " << cur_path_length << " " << *min_path_length << endl;
   }
 
-  // Already visited!
+  // Already Visited!
   
   if (node->visited_forward) {
 
@@ -237,7 +237,7 @@ int traverse_to_end(Edge& in_edge, int end_node_index, int cur_path_length, int 
     return INT_MAX;
   }
 
-  // Reached end!
+  // Reached End!
   
   if (node->node_index == end_node_index) {
     *reached_final = true;
@@ -260,7 +260,7 @@ int traverse_to_end(Edge& in_edge, int end_node_index, int cur_path_length, int 
     return cur_path_length;
   }
 
-  // Reached end because no children.
+  // Reached End because No children.
   
   if (node->out_edges.empty()) {
     /* Mark the path as being visited, but no path to end */
